@@ -1,0 +1,68 @@
+# Option 1: Manual Scraping with BeautifulSoup and Selenium
+
+# Import necessary libraries
+from selenium import webdriver
+from bs4 import BeautifulSoup
+import time
+
+# Function to scrape LinkedIn posts and comments
+def scrape_linkedin_posts_comments(username, password, url):
+    """
+    This function scrapes LinkedIn posts and comments using Selenium and BeautifulSoup.
+
+    Parameters:
+    username (str): LinkedIn username.
+    password (str): LinkedIn password.
+    url (str): URL of the LinkedIn feed to scrape.
+
+    Returns:
+    list: A list of dictionaries containing post and comment details.
+    """
+    # Setup Selenium WebDriver
+    options = webdriver.ChromeOptions()
+    options.add_argument('headless')
+    driver = webdriver.Chrome(options=options)
+    
+    # Login to LinkedIn
+    driver.get("https://www.linkedin.com/login")
+    driver.find_element_by_id('username').send_keys(username)
+    driver.find_element_by_id('password').send_keys(password)
+    driver.find_element_by_xpath("//button[contains(text(), 'Sign in')]").click()
+    time.sleep(5)  # Wait for the page to load
+
+    # Navigate to the specified URL
+    driver.get(url)
+    time.sleep(5)  # Wait for the feed to load
+
+    # Scroll the page to load posts
+    for _ in range(3):  # Scroll 3 times or as needed
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(5)
+
+    # Parse the page with BeautifulSoup
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+
+    # Find all posts
+    posts = soup.find_all('div', {'class': 'feed-shared-update-v2'})  # Class name might change
+    data = []
+
+    # Extract post and comment details
+    for post in posts:
+        try:
+            post_content = post.find('div', {'class': 'feed-shared-text'}).text.strip()
+            comments = post.find_all('div', {'class': 'comments-comment-item'})
+            for comment in comments:
+                comment_content = comment.find('span', {'class': 'comments-comment-item__main-content'}).text.strip()
+                data.append({'post': post_content, 'comment': comment_content})
+        except Exception as e:
+            print(f"Error processing post/comment: {e}")
+
+    # Close the browser
+    driver.quit()
+
+    return data
+
+# Example usage (credentials and URL needed)
+# results = scrape_linkedin_posts_comments('your_username', 'your_password', 'https://www.linkedin.com/feed/')
+# print(results)
+
